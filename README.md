@@ -1,3 +1,6 @@
+# Journal Article
+https://arxiv.org/abs/1910.13012
+
 # What is this
 An independent implementation of DeepMind's AlphaZero algorithm with support for multiplayer games.
 AlphaZero is a deep reinforcement learning algorithm which can learn to master a certain class of adversarial games through self-play.
