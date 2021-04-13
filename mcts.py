@@ -1,5 +1,6 @@
 import math
 import numpy as np
+import copy
 
 # Concerns: Add epsilon amount to UCB evaluation to ensure probability is considered
 # Caveat: Q in heuristic might obviate this.
@@ -19,7 +20,7 @@ class MCTS():
     # Produces a hash-friendly representation of an ndarray.
     # This is used to index nodes in the accumulated Monte Carlo tree.
     def np_hash(self, data):
-        return data.tostring()
+        return data["state"].tostring()
 
     # Run a MCTS simulation starting from state s of the tree.
     # The tree is accumulated in the self.tree dictionary.
@@ -31,19 +32,19 @@ class MCTS():
         current_player = self.game.get_player(s)
         if hashed_s in self.tree: # Not at leaf; select.
             stats = self.tree[hashed_s]
-            N, Q, P = stats[:,1], stats[:,2], stats[:,3]
+            N, Q, P = stats["state"][:,1], stats["state"][:,2], stats["state"][:,3]
             U = cpuct*P*math.sqrt(N.sum() + (1e-6 if epsilon_fix else 0))/(1 + N)
             heuristic = Q + U
             best_a_idx = np.argmax(heuristic)
-            best_a = stats[best_a_idx, 0] # Pick best action to take
+            best_a = stats["state"][best_a_idx, 0] # Pick best action to take
             template = np.zeros_like(self.game.get_available_actions(s)) # Submit action to get s'
             template[tuple(best_a)] = True
             s_prime = self.game.take_action(s, template)
             scores = self.simulate(s_prime) # Forward simulate with this action
             n, q = N[best_a_idx], Q[best_a_idx]
             v = scores[current_player] # Index in to find our reward
-            stats[best_a_idx, 2] = (n*q+v)/(n + 1)
-            stats[best_a_idx, 1] += 1
+            stats["state"][best_a_idx, 2] = (n*q+v)/(n + 1)
+            stats["state"][best_a_idx, 1] += 1
             return scores
 
         else: # Expand
@@ -56,7 +57,7 @@ class MCTS():
             stats = np.zeros((len(idx), 4), dtype=np.object)
             stats[:,-1] = p
             stats[:,0] = list(idx)
-            self.tree[hashed_s] = stats
+            self.tree[hashed_s] = { "env":copy.deepcopy(s["env"]), "state":stats }
             return v
 
 
@@ -64,7 +65,7 @@ class MCTS():
     # The temperature parameter softens or hardens this distribution.
     def get_distribution(self, s, temperature):
         hashed_s = self.np_hash(s)
-        stats = self.tree[hashed_s][:,:2].copy()
+        stats = self.tree[hashed_s]["state"][:,:2].copy()
         N = stats[:,1]
         try:
             raised = np.power(N, 1/temperature)

@@ -16,7 +16,7 @@ class Trainer:
         self.num_games = num_games
         self.num_updates = num_updates
         self.buffer_size_limit = buffer_size_limit
-        self.training_data = np.zeros((0,3))
+        self.training_data = np.zeros((0,4))
         self.cpuct = cpuct
         self.num_threads = num_threads
         self.error_log = []
@@ -47,14 +47,15 @@ class Trainer:
                 dist[:,1] = dist[:,1]*(1-weight) + noise*weight
                 root = False
 
-            data.append([s, dist[:,1], None]) # state, prob, outcome
+            available = self.game.get_available_actions(s)
+
+            data.append([s["state"], dist[:,1], None, available]) # state, prob, action_mask, outcome
 
             # Sample an action
             idx = np.random.choice(len(dist), p=dist[:,1].astype(np.float))
             a = tuple(dist[idx, 0])
 
             # Apply action
-            available = self.game.get_available_actions(s)
             template = np.zeros_like(available)
             template[a] = 1
             s = self.game.take_action(s, template)
@@ -64,7 +65,7 @@ class Trainer:
 
         # Update training examples with outcome
         for i, _ in enumerate(data):
-            data[i][-1] = scores
+            data[i][2] = scores
 
         return np.array(data)
 
