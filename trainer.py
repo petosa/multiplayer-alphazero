@@ -49,7 +49,7 @@ class Trainer:
 
             available = self.game.get_available_actions(s)
 
-            data.append([s["state"], dist[:,1], None, available]) # state, prob, action_mask, outcome
+            data.append([s["obs"], dist[:,1], None, available]) # state, prob, action_mask, outcome
 
             # Sample an action
             idx = np.random.choice(len(dist), p=dist[:,1].astype(np.float))
@@ -67,7 +67,7 @@ class Trainer:
         for i, _ in enumerate(data):
             data[i][2] = scores
 
-        return np.array(data)
+        return np.array(data, dtype=np.object)
 
 
     # Performs one iteration of policy improvement.

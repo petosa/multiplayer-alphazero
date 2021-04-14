@@ -9,7 +9,7 @@ class NeuralNetwork():
         self.game = game
         self.batch_size = batch_size
         init_state = game.get_initial_state()
-        input_shape = init_state["state"].shape
+        input_shape = init_state["obs"].shape
         p_shape = game.get_available_actions(init_state).shape
         v_shape = (game.get_num_players(),)
         self.model = model_class(input_shape, p_shape, v_shape)
@@ -42,7 +42,7 @@ class NeuralNetwork():
     # Given a single state s, does inference to produce a distribution of valid moves P and a value V.
     def predict(self, s):
         self.model.eval()
-        input_s = np.array([s["state"]])
+        input_s = np.array([s["obs"]])
         with torch.no_grad():
             input_s = torch.from_numpy(input_s)
             p_logits, v = self.model(input_s)
