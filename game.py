@@ -2,7 +2,7 @@
 # See the games folder for examples.
 class Game:
 
-    # Returns an ndarray representing the initial game state.
+    # Returns a dict with hidden states "env" (e.g. gym env) and "obs" as ndarray representing the initial game state.
     # Note that array values should be between 0 and 1.
     def get_initial_state(self):
         raise NotImplementedError
@@ -20,10 +20,11 @@ class Game:
     def check_game_over(self, s):
         raise NotImplementedError()
     
-    # Given a state s and action a, produces a new ndarray s' which is the
+    # Given a state s and action a, produces a dict with new hidden states "env" (e.g. gym env) 
+    # and "obs" as new ndarray s' which is the
     # resulting state from taking action a in state s.
     # Note that array values should be between 0 and 1.
-    # Make sure this does NOT modify s in-place; return a new ndarray instead.
+    # Make sure this does NOT modify s in-place; return a new env and ndarray instead.
     def take_action(self, s, a):
         raise NotImplementedError()
 
@@ -32,8 +33,13 @@ class Game:
     def get_player(self, s):
         raise NotImplementedError()
 
-    # Return the number of players in this game.
+    # Return the number of max players in this game.
     def get_num_players(self):
+        raise NotImplementedError()
+
+    # Generate as fast as possbile a string representation of the current game state 
+    # use hidden and normal observation states of the game
+    def get_hash(self, s):
         raise NotImplementedError()
 
     # Visualizes the given state.

@@ -8,8 +8,9 @@ class NeuralNetwork():
     def __init__(self, game, model_class, lr=1e-3, weight_decay=1e-8, batch_size=64, cuda=False):
         self.game = game
         self.batch_size = batch_size
-        input_shape = game.get_initial_state().shape
-        p_shape = game.get_available_actions(game.get_initial_state()).shape
+        init_state = game.get_initial_state()
+        input_shape = init_state["obs"].shape
+        p_shape = game.get_available_actions(init_state).shape
         v_shape = (game.get_num_players(),)
         self.model = model_class(input_shape, p_shape, v_shape)
         self.cuda = cuda
@@ -25,12 +26,13 @@ class NeuralNetwork():
         self.model.train()
         batch_size=self.batch_size
         idx = np.random.randint(len(data), size=batch_size)
-        batch = data[idx]
+        batch = data[idx][:,:3] # select data, add no action mask
+        action_mask = data[idx][:,3]
         states = np.stack(batch[:,0])
         x = torch.from_numpy(states)
         p_pred, v_pred = self.model(x)
         p_gt, v_gt = batch[:,1], np.stack(batch[:,2])
-        loss = self.loss(states, (p_pred, v_pred), (p_gt, v_gt))
+        loss = self.loss(states, action_mask, (p_pred, v_pred), (p_gt, v_gt))
         self.optimizer.zero_grad()
         loss.backward()
         self.optimizer.step()
@@ -40,16 +42,17 @@ class NeuralNetwork():
     # Given a single state s, does inference to produce a distribution of valid moves P and a value V.
     def predict(self, s):
         self.model.eval()
-        input_s = np.array([s])
+        input_s = np.array([s["obs"]])
         with torch.no_grad():
             input_s = torch.from_numpy(input_s)
             p_logits, v = self.model(input_s)
-            p, v = self.get_valid_dist(s, p_logits[0]).cpu().numpy().squeeze(), v.cpu().numpy().squeeze() # EXP because log softmax
+            action_mask = self.game.get_available_actions(s)
+            p, v = self.get_valid_dist(s, p_logits[0], action_mask).cpu().numpy().squeeze(), v.cpu().numpy().squeeze() # EXP because log softmax
         return p, v
 
 
     # MSE + Cross entropy
-    def loss(self, states, prediction, target):
+    def loss(self, states, action_mask, prediction, target):
         batch_size = len(states)
         p_pred, v_pred = prediction
         p_gt, v_gt = target
@@ -64,14 +67,14 @@ class NeuralNetwork():
                 gt = gt.cuda()
             s = states[i]
             logits = p_pred[i]
-            pred = self.get_valid_dist(s, logits, log_softmax=True)
+            pred = self.get_valid_dist(s, logits, action_mask[i], log_softmax=True)
             p_loss += -torch.sum(gt*pred)
         return p_loss + v_loss
 
 
     # Takes one state and logit set as input, produces a softmax/log_softmax over the valid actions.
-    def get_valid_dist(self, s, logits, log_softmax=False):
-        mask = torch.from_numpy(self.game.get_available_actions(s).astype(np.uint8))
+    def get_valid_dist(self, s, logits, action_mask, log_softmax=False):
+        mask = torch.from_numpy(action_mask)
         if self.cuda:
             mask = mask.cuda()
         selection = torch.masked_select(logits, mask)
